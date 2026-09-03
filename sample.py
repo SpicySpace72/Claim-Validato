@@ -1,7 +1,7 @@
 import os
 import re
 import uuid
-from typing import Annotated
+from typing import List
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer, util
 from openai import OpenAI
-from fastapi.openapi.utils import get_openapi
 
 
 # ============================================================
@@ -22,91 +21,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Allow the frontend to communicate with the backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 # ============================================================
-# SWAGGER FILE UPLOAD COMPATIBILITY FIX
-# ============================================================
-
-def custom_openapi():
-
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
-        routes=app.routes,
-    )
-
-    # Force OpenAPI 3.0.3 for better Swagger file-upload support
-    schema["openapi"] = "3.0.3"
-
-    components = schema.get(
-        "components",
-        {}
-    ).get(
-        "schemas",
-        {}
-    )
-
-    for schema_data in components.values():
-
-        properties = schema_data.get(
-            "properties",
-            {}
-        )
-
-        for property_data in properties.values():
-
-            # Single file
-            if (
-                property_data.get("type") == "string"
-                and "contentMediaType" in property_data
-            ):
-                property_data.pop(
-                    "contentMediaType",
-                    None
-                )
-
-                property_data["format"] = "binary"
-
-            # Multiple files
-            if property_data.get("type") == "array":
-
-                items = property_data.get(
-                    "items",
-                    {}
-                )
-
-                if "contentMediaType" in items:
-
-                    items.pop(
-                        "contentMediaType",
-                        None
-                    )
-
-                    items["type"] = "string"
-                    items["format"] = "binary"
-
-    app.openapi_schema = schema
-
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
-
-
-# ============================================================
-# AI MODEL
+# AI MODELS
 # ============================================================
 
 print("Loading BGE embedding model...")
@@ -135,11 +61,12 @@ client = OpenAI(
     api_key=groq_api_key
 )
 
-GROQ_MODEL = "openai/gpt-oss-20b"
+# Current Groq production model
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 # ============================================================
-# EXTRACT TEXT FROM PDF / TXT
+# HELPER: EXTRACT TEXT FROM PDF / TXT
 # ============================================================
 
 async def extract_text(file: UploadFile) -> str:
@@ -151,7 +78,9 @@ async def extract_text(file: UploadFile) -> str:
 
     extension = filename.lower().split(".")[-1]
 
+    # -------------------------
     # PDF
+    # -------------------------
     if extension == "pdf":
 
         try:
@@ -169,15 +98,18 @@ async def extract_text(file: UploadFile) -> str:
                 if text:
                     pages.append(text)
 
-            return "\n".join(pages).strip()
+            extracted_text = "\n".join(pages)
+
+            return extracted_text.strip()
 
         except Exception as e:
-
             raise ValueError(
                 f"Could not read PDF '{filename}': {str(e)}"
             )
 
+    # -------------------------
     # TXT
+    # -------------------------
     elif extension == "txt":
 
         try:
@@ -189,12 +121,13 @@ async def extract_text(file: UploadFile) -> str:
             ).strip()
 
         except Exception as e:
-
             raise ValueError(
                 f"Could not read TXT '{filename}': {str(e)}"
             )
 
-    # Unsupported
+    # -------------------------
+    # Unsupported file
+    # -------------------------
     else:
 
         raise ValueError(
@@ -204,27 +137,29 @@ async def extract_text(file: UploadFile) -> str:
 
 
 # ============================================================
-# SPLIT TEXT INTO SENTENCES
+# HELPER: SPLIT TEXT INTO SENTENCES
 # ============================================================
 
 def split_into_sentences(text: str):
 
-    text = re.sub(r'\s+', ' ', text)
-
+    # Basic sentence splitting suitable for this MVP
     sentences = re.split(
-        r'(?<![A-Z0-9])(?<=[.!?])\s+(?=[A-Z"\'])',
+        r'(?<=[.!?])\s+',
         text
     )
 
-    return [
+    # Remove empty strings
+    sentences = [
         sentence.strip()
         for sentence in sentences
         if sentence.strip()
     ]
 
+    return sentences
+
 
 # ============================================================
-# GET CHARACTER SPAN
+# HELPER: GET CHARACTER SPAN
 # ============================================================
 
 def get_span(full_text: str, sentence: str):
@@ -267,8 +202,8 @@ async def health():
 
 @app.post("/verify")
 async def verify_claim(
-    draft: Annotated[str, Form(...)],
-    files: Annotated[list[UploadFile], File(...)]
+    draft: str = Form(...),
+    files: List[UploadFile] = File(...)
 ):
 
     try:
@@ -297,6 +232,7 @@ async def verify_claim(
         # ----------------------------------------------------
 
         all_sentences = []
+
         source_documents = {}
 
         for uploaded_file in files:
@@ -315,16 +251,14 @@ async def verify_claim(
                 )
 
             if not text:
+
                 continue
-            text = re.sub(r'\s+', ' ', text).strip()
+
             source_documents[filename] = text
 
             sentences = split_into_sentences(text)
 
             for sentence in sentences:
-
-                if len(sentence.split()) < 4:
-                    continue
 
                 all_sentences.append({
                     "src": filename,
@@ -333,7 +267,7 @@ async def verify_claim(
 
 
         # ----------------------------------------------------
-        # CHECK SOURCE TEXT
+        # CHECK WHETHER DOCUMENTS CONTAIN TEXT
         # ----------------------------------------------------
 
         if not all_sentences:
@@ -384,21 +318,30 @@ async def verify_claim(
 
         for claim in claims:
 
-            # Embed claim
+            # -----------------------------------------------
+            # EMBED CLAIM
+            # -----------------------------------------------
+
             claim_embedding = embedding_model.encode(
                 claim,
                 convert_to_tensor=True
             )
 
 
-            # Semantic similarity
+            # -----------------------------------------------
+            # SEMANTIC SIMILARITY
+            # -----------------------------------------------
+
             similarity_scores = util.cos_sim(
                 claim_embedding,
                 source_embeddings
             )[0]
 
 
-            # Top 3 candidates
+            # -----------------------------------------------
+            # GET TOP 3 EVIDENCE CANDIDATES
+            # -----------------------------------------------
+
             top_k = min(
                 3,
                 len(all_sentences)
@@ -425,7 +368,10 @@ async def verify_claim(
                 })
 
 
-            # Best evidence
+            # -----------------------------------------------
+            # BEST MATCH
+            # -----------------------------------------------
+
             best_match = candidates[0]
 
             best_match_text = best_match["text"]
@@ -433,9 +379,9 @@ async def verify_claim(
             best_score = best_match["score"]
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # LLM VERIFICATION
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             evidence_context = "\n\n".join(
                 [
@@ -475,17 +421,17 @@ UNVERIFIED:
 The source evidence does not provide enough information
 to determine whether the claim is true.
 
-Return ONLY this format:
+Return ONLY the following format:
 
 VERDICT: SUPPORTED
 REASON: short explanation
 
-OR
+or
 
 VERDICT: DIVERGENT
 REASON: short explanation
 
-OR
+or
 
 VERDICT: UNVERIFIED
 REASON: short explanation
@@ -512,12 +458,14 @@ REASON: short explanation
                     temperature=0
                 )
 
+
                 llm_output = (
                     response.choices[0]
                     .message
                     .content
                     .strip()
                 )
+
 
             except Exception as e:
 
@@ -530,9 +478,9 @@ REASON: short explanation
                 )
 
 
-            # ------------------------------------------------
-            # PARSE VERDICT
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # PARSE LLM VERDICT
+            # -----------------------------------------------
 
             verdict_match = re.search(
                 r"VERDICT\s*:\s*(SUPPORTED|DIVERGENT|UNVERIFIED)",
@@ -550,7 +498,8 @@ REASON: short explanation
             if verdict_match:
 
                 claim_verdict = (
-                    verdict_match.group(1).upper()
+                    verdict_match.group(1)
+                    .upper()
                 )
 
             else:
@@ -567,9 +516,9 @@ REASON: short explanation
                 reason = llm_output
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # SOURCE CHARACTER SPAN
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             full_source_text = source_documents[
                 best_match_src
@@ -581,9 +530,9 @@ REASON: short explanation
             )
 
 
-            # ------------------------------------------------
-            # ADD CLAIM RESULT
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # ADD RESULT
+            # -----------------------------------------------
 
             verified_claims.append({
 
@@ -640,7 +589,10 @@ REASON: short explanation
         # CERTIFICATE ID
         # ----------------------------------------------------
 
-        cert_id = "vc_" + uuid.uuid4().hex[:8]
+        cert_id = (
+            "vc_"
+            + uuid.uuid4().hex[:8]
+        )
 
 
         # ----------------------------------------------------
@@ -648,23 +600,14 @@ REASON: short explanation
         # ----------------------------------------------------
 
         return {
+
             "cert_id": cert_id,
+
             "verdict": overall_verdict,
+
             "claims": verified_claims
+
         }
-
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-
-        print("UNEXPECTED ERROR:", str(e))
-
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
 
 
 # ============================================================
