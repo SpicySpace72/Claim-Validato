@@ -1,0 +1,6 @@
+{
+  "name": "VeriClaim",
+  "description": "Evidence-Grounded AI Verification Layer checking AI-generated drafts against uploaded source documents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

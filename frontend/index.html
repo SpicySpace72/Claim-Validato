@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VeriClaim - Evidence-Grounded AI Verification</title>
+  <meta name="description" content="Evidence-Grounded AI Verification Layer checking AI-generated drafts against uploaded source documents." />
+  <meta property="og:title" content="VeriClaim - Evidence-Grounded AI Verification" />
+  <meta property="og:description" content="Evidence-Grounded AI Verification Layer checking AI-generated drafts against uploaded source documents." />
+  <meta property="og:type" content="website" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-full flex flex-col bg-[#f8fafc] text-slate-900 antialiased font-sans">
+
+  <!-- Top Enterprise Header with Bold Typography theme -->
+  <header class="flex items-center justify-between px-6 lg:px-8 py-4 bg-white border-b border-slate-200 shadow-xs sticky top-0 z-30">
+    <div class="flex items-center space-x-6">
+      <div class="flex flex-col cursor-pointer" id="brandLogoBtn">
+        <h1 class="text-2xl font-black tracking-tighter text-indigo-900 uppercase">VeriClaim<span class="text-indigo-500">.</span></h1>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Evidence-Grounded AI Verification</p>
+      </div>
+
+      <!-- Real Clickable Navigation tabs -->
+      <nav class="flex items-center gap-2 sm:gap-4 text-xs uppercase tracking-wider pl-2 sm:pl-4 border-l border-slate-200">
+        <button
+          id="dashboardNav"
+          data-nav="dashboard"
+          type="button"
+          class="px-2 sm:px-3 py-1.5 text-indigo-600 border-b-2 border-indigo-600 font-bold transition-all cursor-pointer hover:text-indigo-800"
+        >
+          DASHBOARD
+        </button>
+        <button
+          id="historyNav"
+          data-nav="history"
+          type="button"
+          class="px-2 sm:px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-slate-800 font-semibold transition-all cursor-pointer"
+        >
+          HISTORY
+        </button>
+        <button
+          id="settingsNav"
+          data-nav="settings"
+          type="button"
+          class="px-2 sm:px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-slate-800 font-semibold transition-all cursor-pointer"
+        >
+          SETTINGS
+        </button>
+        <button
+          id="adminNav"
+          data-nav="admin"
+          type="button"
+          class="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-slate-500 border-b-2 border-transparent hover:text-slate-800 font-semibold transition-all cursor-pointer ml-1"
+        >
+          <span>ADMIN</span>
+          <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-black text-slate-600">VC</div>
+        </button>
+      </nav>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <!-- Target Backend Endpoint Pill -->
+      <div class="hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-600">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px]">Target: <code class="font-mono text-slate-800 font-bold" id="headerEndpoint">http://127.0.0.1:8000/verify</code></span>
+      </div>
+
+      <!-- Load Sample Case Button -->
+      <button id="loadSampleBtn" type="button" class="inline-flex items-center text-xs font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+        <svg class="w-3.5 h-3.5 mr-1.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        Load Sample Case
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-7">
+
+    <!-- ================================================================= -->
+    <!-- 1. DASHBOARD PAGE (Verification Screen) -->
+    <!-- ================================================================= -->
+    <div id="dashboardPage" class="w-full">
+      <!-- Optional Return to History Banner when viewing an archived record -->
+      <div id="viewingHistoryBanner" class="hidden mb-5 p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between">
+        <div class="flex items-center space-x-2.5 text-xs text-indigo-900 font-medium">
+          <span class="px-2 py-0.5 rounded bg-indigo-600 text-white font-mono font-bold text-[10px]">ARCHIVED AUDIT</span>
+          <span id="historyBannerText">Viewing historic verification certificate.</span>
+        </div>
+        <button
+          id="backToHistoryFromDashboardBtn"
+          type="button"
+          class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-700 bg-white hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 transition-colors cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to History
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+
+        <!-- LEFT COLUMN (~38-40%): INPUT PANEL -->
+        <section class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-5">
+          <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
+            <h2 class="text-lg font-bold text-slate-800 uppercase tracking-tight">Verify AI Output</h2>
+            <p class="text-xs text-slate-500">Input your draft and source evidence for cross-verification.</p>
+          </div>
+
+          <form id="verifyForm" class="flex flex-col gap-5" onsubmit="return false;">
+            <!-- 1. AI Draft Answer Input -->
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <label for="draftTextarea" class="text-[11px] font-bold uppercase text-slate-400 tracking-tight">
+                  AI Draft Answer <span class="text-rose-500">*</span>
+                </label>
+                <button id="clearDraftBtn" type="button" class="text-[11px] font-semibold text-slate-400 hover:text-indigo-600 uppercase tracking-wider transition-colors cursor-pointer">Clear</button>
+              </div>
+              <textarea
+                id="draftTextarea"
+                rows="7"
+                class="w-full p-4 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed text-slate-800 placeholder:text-slate-400 transition duration-150 resize-y"
+                placeholder="Paste the AI-generated answer you want to verify against your source documents..."
+              ></textarea>
+              <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-0.5">
+                <span id="charCount">0 characters</span>
+                <span id="wordCount">0 words</span>
+              </div>
+            </div>
+
+            <!-- 2. Source Document Upload -->
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] font-bold uppercase text-slate-400 tracking-tight">
+                  Source Documents <span class="text-rose-500">*</span>
+                </label>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400" id="fileCountBadge">0 files attached</span>
+              </div>
+
+              <!-- Drag & Drop Container -->
+              <div
+                id="dropZone"
+                class="relative border-2 border-dashed border-slate-200 rounded-xl p-5 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer group text-center"
+              >
+                <input
+                  id="fileInput"
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt,application/pdf,text/plain"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                <div class="flex flex-col items-center justify-center space-y-1.5 pointer-events-none">
+                  <div class="h-9 w-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="text-xs text-slate-600 font-medium">
+                      <span class="text-indigo-600 underline font-semibold group-hover:text-indigo-700">Drop files</span> or click to upload
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide font-medium">PDF, TXT supported</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Attached Files List -->
+              <div id="fileListContainer" class="hidden space-y-2 pt-1">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Selected Source Files:</p>
+                <div id="fileList" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1"></div>
+              </div>
+            </div>
+
+            <!-- Form Client Validation Alert -->
+            <div id="validationAlert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start space-x-2">
+              <svg class="w-4 h-4 text-rose-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span id="validationAlertText" class="font-medium">Please supply both an AI draft and at least one source file.</span>
+            </div>
+
+            <!-- 3. Verify Claims Button (Bold Typography Theme) -->
+            <div class="pt-2">
+              <button
+                id="verifyBtn"
+                type="button"
+                class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-widest flex items-center justify-center cursor-pointer"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Verify Claims</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- RIGHT COLUMN (~60-62%): REVIEW PANEL -->
+        <section class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col min-h-[580px]">
+          <div class="border-b border-slate-100 pb-4 flex items-start justify-between">
+            <div class="flex flex-col gap-1">
+              <h2 class="text-lg font-bold text-slate-800 uppercase tracking-tight">Verification Review</h2>
+              <p class="text-xs text-slate-500">Audit trail with sentence-level claim alignment & confidence spans.</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] text-slate-400 uppercase font-bold mb-0.5 tracking-widest">Analyzed on</p>
+              <p id="reviewTimestamp" class="text-xs font-bold text-slate-700">Ready</p>
+            </div>
+          </div>
+
+          <!-- DYNAMIC CONTENT CONTAINER -->
+          <div id="reviewContainer" class="flex-1 flex flex-col justify-center py-6">
+
+            <!-- 1. INITIAL EMPTY STATE -->
+            <div id="emptyState" class="text-center max-w-md mx-auto py-14 px-4 space-y-4">
+              <div class="h-16 w-16 mx-auto rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-200 shadow-2xs">
+                <svg class="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                <h3 class="text-base font-bold text-slate-800 uppercase tracking-tight">Verification results will appear here.</h3>
+                <p class="text-sm text-slate-500">Paste an AI response, upload your source documents, and click Verify Claims.</p>
+              </div>
+            </div>
+
+            <!-- 2. LOADING STATE -->
+            <div id="loadingState" class="hidden text-center max-w-md mx-auto py-16 px-4 space-y-4">
+              <div class="inline-flex items-center justify-center p-3 rounded-full bg-indigo-50 text-indigo-600 ring-8 ring-indigo-50/50 animate-spin">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="text-base font-bold text-slate-900 uppercase tracking-tight">Analyzing claims against evidence...</h3>
+                <p class="text-sm text-slate-500 font-medium">Comparing AI-generated statements with uploaded evidence.</p>
+              </div>
+            </div>
+
+            <!-- 3. ERROR STATE -->
+            <div id="errorState" class="hidden max-w-lg mx-auto py-10 px-4 text-center space-y-4">
+              <div class="h-14 w-14 mx-auto rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200">
+                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                <h3 class="text-base font-bold text-slate-900 uppercase tracking-tight" id="errorTitle">Verification Error</h3>
+                <p class="text-sm font-medium text-rose-600" id="errorMessage">Unable to connect to the VeriClaim verification server.</p>
+              </div>
+              <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  id="retryBtn"
+                  type="button"
+                  class="inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-slate-900 text-white hover:bg-black transition-colors shadow-sm cursor-pointer"
+                >
+                  <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Retry Verification
+                </button>
+                <button
+                  id="viewSampleDataBtn"
+                  type="button"
+                  class="inline-flex items-center px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors border border-slate-200 cursor-pointer"
+                >
+                  View Demo Report
+                </button>
+              </div>
+              <p class="text-xs text-slate-400 pt-2 font-mono">
+                FastAPI expected on <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-bold" id="errorExpectedEndpoint">http://127.0.0.1:8000/verify</code>
+              </p>
+            </div>
+
+            <!-- 4. ACTIVE RESULTS CONTAINER -->
+            <div id="resultsView" class="hidden space-y-6 w-full">
+
+              <!-- 4.1 STATUS HEADER with Bold Typography Badges -->
+              <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex flex-col gap-1">
+                  <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Overall Verdict</div>
+                  <div class="flex items-center space-x-3">
+                    <span id="verdictBadge" class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black uppercase tracking-wider">
+                      <!-- Dynamic verdict text + icon -->
+                    </span>
+                    <span id="verdictSubtitle" class="text-xs text-slate-600 font-medium"></span>
+                  </div>
+                </div>
+                <div class="sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200">
+                  <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Certificate ID</div>
+                  <div class="flex items-center sm:justify-end space-x-2">
+                    <span id="certIdDisplay" class="text-[11px] font-mono text-slate-500 font-bold px-2 py-0.5 bg-white rounded border border-slate-200"></span>
+                    <button id="copyCertBtn" type="button" title="Copy Certificate ID" class="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4.2 CLAIM SUMMARY METRICS (Theme 3-Card Grid with bold styling) -->
+              <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <p class="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-tighter">Total Claims</p>
+                  <p id="statTotalClaims" class="text-2xl font-black text-slate-800">00</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <p class="text-[10px] font-bold text-emerald-500 uppercase mb-1 tracking-tighter">Supported</p>
+                  <p id="statSupportedClaims" class="text-2xl font-black text-emerald-600">00</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <p class="text-[10px] font-bold text-amber-500 uppercase mb-1 tracking-tighter">Review Required</p>
+                  <p id="statReviewClaims" class="text-2xl font-black text-amber-600">00</p>
+                </div>
+              </div>
+
+              <!-- 4.3 CLAIM CARDS LIST -->
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Evaluated Claims & Evidence</h3>
+                  <span id="evidenceMatchRate" class="text-xs font-bold text-slate-600 font-mono"></span>
+                </div>
+
+                <!-- Claims Container -->
+                <div id="claimsList" class="flex flex-col gap-4">
+                  <!-- Dynamically generated claim cards go here -->
+                </div>
+              </div>
+
+              <!-- 4.4 DOWNLOAD CERTIFICATE FOOTER -->
+              <div class="mt-auto flex justify-center py-4 border-t border-slate-100">
+                <button
+                  id="downloadCertBtn"
+                  type="button"
+                  class="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-white rounded-full font-bold text-[11px] uppercase tracking-widest hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                  </svg>
+                  <span>Download JSON Certificate</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 2. HISTORY PAGE -->
+    <!-- ================================================================= -->
+    <div id="historyPage" class="hidden w-full space-y-6">
+      <!-- History Header -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">Verification History</h2>
+            <span id="historyRecordCountBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200">
+              0 Records
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Review previous VeriClaim verification certificates and audit results.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button
+            id="clearHistoryBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>CLEAR HISTORY</span>
+          </button>
+          <button
+            id="historyNewVerificationBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>NEW VERIFICATION</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- History Items Container -->
+      <div id="historyListContainer" class="space-y-4">
+        <!-- Dynamically rendered history cards go here -->
+      </div>
+
+      <!-- History Empty State -->
+      <div id="historyEmptyState" class="hidden bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto space-y-4">
+        <div class="h-16 w-16 mx-auto rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center border border-indigo-100">
+          <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div class="space-y-1">
+          <h3 class="text-base font-bold text-slate-800 uppercase tracking-tight">No verification history yet.</h3>
+          <p class="text-sm text-slate-500">Run a verification to create your first audit record.</p>
+        </div>
+        <div class="pt-2">
+          <button
+            id="historyGoDashboardBtn"
+            type="button"
+            class="inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer"
+          >
+            Start Verification
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 3. SETTINGS PAGE -->
+    <!-- ================================================================= -->
+    <div id="settingsPage" class="hidden w-full max-w-3xl mx-auto space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-1">
+        <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">Settings</h2>
+        <p class="text-xs text-slate-500 font-medium">Configure VeriClaim verification engine parameters and API endpoints.</p>
+      </div>
+
+      <!-- Settings Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <!-- Save Feedback Banner -->
+        <div id="settingsSuccessAlert" class="hidden p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center space-x-2 font-medium">
+          <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span id="settingsSuccessText">Settings updated successfully. API endpoint active.</span>
+        </div>
+
+        <div class="space-y-2">
+          <label for="settingsApiInput" class="text-xs font-bold uppercase text-slate-600 tracking-wider flex items-center justify-between">
+            <span>API Endpoint</span>
+            <span class="text-[10px] text-slate-400 font-normal">POST multipart/form-data</span>
+          </label>
+          <div class="relative">
+            <input
+              id="settingsApiInput"
+              type="text"
+              class="w-full p-3.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-slate-800 placeholder:text-slate-400"
+              placeholder="http://127.0.0.1:8000/verify"
+            />
+          </div>
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            The target FastAPI endpoint that receives the AI draft string and uploaded PDF/TXT files for verification. Default is <code class="font-mono text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">http://127.0.0.1:8000/verify</code>.
+          </p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <button
+            id="resetSettingsBtn"
+            type="button"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+          >
+            Reset to Default
+          </button>
+          <button
+            id="saveSettingsBtn"
+            type="button"
+            class="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-colors cursor-pointer"
+          >
+            Save Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- CORS & FastApi Integration Guide Card -->
+      <div class="bg-slate-50 rounded-2xl border border-slate-200 p-6 space-y-3 text-xs text-slate-600">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">FastAPI Connection Reference</h3>
+        <p class="leading-relaxed">
+          Ensure your FastAPI application enables Cross-Origin Resource Sharing (CORS) with <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800">CORSMiddleware</code> allowing your frontend origin.
+        </p>
+        <div class="bg-slate-900 text-slate-200 p-3.5 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed">
+<pre>from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 4. ADMIN PAGE -->
+    <!-- ================================================================= -->
+    <div id="adminPage" class="hidden w-full space-y-6">
+      <!-- Admin Header -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-2.5">
+            <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">Admin Dashboard</h2>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 border border-indigo-200 tracking-wider">
+              Local Demo Analytics
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Browser-local verification statistics and compliance audit summary calculated from stored records.</p>
+        </div>
+
+        <div class="text-xs text-slate-400 font-mono">
+          Scope: <span class="text-slate-700 font-bold">Client Storage</span>
+        </div>
+      </div>
+
+      <!-- Admin Stat Metrics Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-tighter">Total Verifications</p>
+          <p id="adminStatTotalVerifications" class="text-2xl font-black text-slate-900">00</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-1">Audit cycles run</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold text-indigo-500 uppercase mb-1 tracking-tighter">Total Claims Checked</p>
+          <p id="adminStatTotalClaims" class="text-2xl font-black text-indigo-600">00</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-1">Extracted statements</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold text-emerald-500 uppercase mb-1 tracking-tighter">Supported Claims</p>
+          <p id="adminStatSupportedClaims" class="text-2xl font-black text-emerald-600">00</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-1">Grounded in evidence</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold text-amber-500 uppercase mb-1 tracking-tighter">Review Required</p>
+          <p id="adminStatReviewClaims" class="text-2xl font-black text-amber-600">00</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-1">Flagged for humans</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm col-span-2 md:col-span-1">
+          <p class="text-[10px] font-bold text-rose-500 uppercase mb-1 tracking-tighter">Divergent / Unsupported</p>
+          <p id="adminStatDivergentClaims" class="text-2xl font-black text-rose-600">00</p>
+          <p class="text-[10px] text-slate-400 font-medium mt-1">Contradictions</p>
+        </div>
+      </div>
+
+      <!-- Recent Verification Activity Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Recent Verification Activity</h3>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Chronological Records</span>
+        </div>
+
+        <div id="adminActivityContainer" class="overflow-x-auto">
+          <!-- Dynamically populated table or empty state -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="border-t border-slate-200 bg-white py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <div class="font-medium">VeriClaim Compliance Layer &bull; Evidence-Grounded AI Verification</div>
+      <div class="flex items-center space-x-4 text-[11px]">
+        <span class="font-bold uppercase tracking-wider text-slate-400">FastAPI Verification Engine</span>
+        <span>&bull;</span>
+        <button id="footerEndpointLink" type="button" class="text-indigo-600 font-semibold hover:underline cursor-pointer">Endpoint Config</button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Storage Keys
+    const STORAGE_KEY_HISTORY = "vericlaim_history";
+    const STORAGE_KEY_API_URL = "vericlaim_api_url";
+    const DEFAULT_API_URL = "http://127.0.0.1:8000/verify";
+
+    // Application state
+    let uploadedFiles = [];
+    let currentResponseData = null;
+    let isVerifying = false;
+    let viewingFromHistory = false;
+
+    // API Endpoint Getter
+    function getApiUrl() {
+      return localStorage.getItem(STORAGE_KEY_API_URL) || DEFAULT_API_URL;
+    }
+    window.getApiUrl = getApiUrl;
+
+    // Header & Target Elements
+    const headerEndpoint = document.getElementById("headerEndpoint");
+    const errorExpectedEndpoint = document.getElementById("errorExpectedEndpoint");
+
+    function refreshEndpointDisplays() {
+      const url = getApiUrl();
+      if (headerEndpoint) headerEndpoint.textContent = url;
+      if (errorExpectedEndpoint) errorExpectedEndpoint.textContent = url;
+    }
+
+    // DOM Elements - Form & Dashboard
+    const draftTextarea = document.getElementById("draftTextarea");
+    const charCount = document.getElementById("charCount");
+    const wordCount = document.getElementById("wordCount");
+    const clearDraftBtn = document.getElementById("clearDraftBtn");
+    const fileInput = document.getElementById("fileInput");
+    const dropZone = document.getElementById("dropZone");
+    const fileListContainer = document.getElementById("fileListContainer");
+    const fileList = document.getElementById("fileList");
+    const fileCountBadge = document.getElementById("fileCountBadge");
+    const validationAlert = document.getElementById("validationAlert");
+    const validationAlertText = document.getElementById("validationAlertText");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const loadSampleBtn = document.getElementById("loadSampleBtn");
+
+    // Review Panel Elements
+    const reviewContainer = document.getElementById("reviewContainer");
+    const emptyState = document.getElementById("emptyState");
+    const loadingState = document.getElementById("loadingState");
+    const errorState = document.getElementById("errorState");
+    const errorMessage = document.getElementById("errorMessage");
+    const retryBtn = document.getElementById("retryBtn");
+    const viewSampleDataBtn = document.getElementById("viewSampleDataBtn");
+    const resultsView = document.getElementById("resultsView");
+    const reviewTimestamp = document.getElementById("reviewTimestamp");
+
+    // Results Header & Metrics
+    const verdictBadge = document.getElementById("verdictBadge");
+    const verdictSubtitle = document.getElementById("verdictSubtitle");
+    const certIdDisplay = document.getElementById("certIdDisplay");
+    const copyCertBtn = document.getElementById("copyCertBtn");
+    const statTotalClaims = document.getElementById("statTotalClaims");
+    const statSupportedClaims = document.getElementById("statSupportedClaims");
+    const statReviewClaims = document.getElementById("statReviewClaims");
+    const evidenceMatchRate = document.getElementById("evidenceMatchRate");
+    const claimsList = document.getElementById("claimsList");
+    const downloadCertBtn = document.getElementById("downloadCertBtn");
+
+    // History Banner in Dashboard
+    const viewingHistoryBanner = document.getElementById("viewingHistoryBanner");
+    const historyBannerText = document.getElementById("historyBannerText");
+    const backToHistoryFromDashboardBtn = document.getElementById("backToHistoryFromDashboardBtn");
+
+    // Navigation Buttons (Supporting both dashboardNav and navDashboard IDs)
+    const dashboardNav = document.getElementById("dashboardNav") || document.getElementById("navDashboard");
+    const historyNav = document.getElementById("historyNav") || document.getElementById("navHistory");
+    const settingsNav = document.getElementById("settingsNav") || document.getElementById("navSettings");
+    const adminNav = document.getElementById("adminNav") || document.getElementById("navAdmin");
+
+    // Aliases
+    const navDashboard = dashboardNav;
+    const navHistory = historyNav;
+    const navSettings = settingsNav;
+    const navAdmin = adminNav;
+
+    // Expose globally
+    window.dashboardNav = dashboardNav;
+    window.historyNav = historyNav;
+    window.settingsNav = settingsNav;
+    window.adminNav = adminNav;
+    window.navDashboard = dashboardNav;
+    window.navHistory = historyNav;
+    window.navSettings = settingsNav;
+    window.navAdmin = adminNav;
+
+    const brandLogoBtn = document.getElementById("brandLogoBtn");
+    const footerEndpointLink = document.getElementById("footerEndpointLink");
+
+    // Pages
+    const pages = {
+      dashboard: document.getElementById("dashboardPage"),
+      history: document.getElementById("historyPage"),
+      settings: document.getElementById("settingsPage"),
+      admin: document.getElementById("adminPage")
+    };
+
+    const navButtons = {
+      dashboard: dashboardNav,
+      history: historyNav,
+      settings: settingsNav,
+      admin: adminNav
+    };
+
+    // =========================================================================
+    // 1. CENTRAL NAVIGATION SYSTEM
+    // =========================================================================
+    function showPage(pageName) {
+      // Hide all pages
+      Object.values(pages).forEach(pageEl => {
+        if (pageEl) pageEl.classList.add("hidden");
+      });
+
+      // Show requested page
+      if (pages[pageName]) {
+        pages[pageName].classList.remove("hidden");
+      }
+
+      // Update active nav styling
+      const activeClasses = ["text-indigo-600", "border-indigo-600", "font-bold"];
+      const inactiveClasses = ["text-slate-500", "border-transparent", "font-semibold"];
+
+      Object.entries(navButtons).forEach(([key, btn]) => {
+        if (!btn) return;
+        if (key === pageName) {
+          btn.classList.remove(...inactiveClasses);
+          btn.classList.add(...activeClasses);
+        } else {
+          btn.classList.remove(...activeClasses);
+          btn.classList.add(...inactiveClasses);
+        }
+      });
+
+      // Page-specific initializers
+      if (pageName === "history") {
+        renderHistoryPage();
+      } else if (pageName === "settings") {
+        initSettingsPage();
+      } else if (pageName === "admin") {
+        renderAdminPage();
+      }
+
+      // Scroll to top cleanly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Expose showPage globally
+    window.showPage = showPage;
+
+    // Bind real clickable event listeners explicitly
+    dashboardNav.addEventListener("click", () => showPage("dashboard"));
+    historyNav.addEventListener("click", () => showPage("history"));
+    settingsNav.addEventListener("click", () => showPage("settings"));
+    adminNav.addEventListener("click", () => showPage("admin"));
+    if (brandLogoBtn) brandLogoBtn.addEventListener("click", () => showPage("dashboard"));
+    if (footerEndpointLink) footerEndpointLink.addEventListener("click", () => showPage("settings"));
+
+    // =========================================================================
+    // 2. TEXTAREA & FILE INPUT EVENT HANDLERS
+    // =========================================================================
+    function updateTextStats() {
+      const text = draftTextarea.value;
+      charCount.textContent = `${text.length.toLocaleString()} characters`;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      wordCount.textContent = `${words.toLocaleString()} words`;
+    }
+
+    draftTextarea.addEventListener("input", () => {
+      updateTextStats();
+      hideValidationAlert();
+    });
+
+    clearDraftBtn.addEventListener("click", () => {
+      draftTextarea.value = "";
+      updateTextStats();
+    });
+
+    fileInput.addEventListener("change", (e) => {
+      handleFiles(e.target.files);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50/40');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        handleFiles(dt.files);
+      }
+    });
+
+    function handleFiles(files) {
+      let addedCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const lowerName = file.name.toLowerCase();
+        const isPdf = lowerName.endsWith('.pdf') || file.type === 'application/pdf';
+        const isTxt = lowerName.endsWith('.txt') || file.type === 'text/plain';
+
+        if (isPdf || isTxt) {
+          const exists = uploadedFiles.some(f => f.name === file.name && f.size === file.size);
+          if (!exists) {
+            uploadedFiles.push(file);
+            addedCount++;
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        hideValidationAlert();
+      }
+      renderFileList();
+    }
+
+    function removeFile(index) {
+      uploadedFiles.splice(index, 1);
+      renderFileList();
+    }
+
+    function renderFileList() {
+      fileList.innerHTML = "";
+      const count = uploadedFiles.length;
+      fileCountBadge.textContent = `${count} ${count === 1 ? 'file' : 'files'} attached`;
+
+      if (count === 0) {
+        fileListContainer.classList.add("hidden");
+        return;
+      }
+
+      fileListContainer.classList.remove("hidden");
+
+      uploadedFiles.forEach((file, index) => {
+        const chip = document.createElement("div");
+        chip.className = "flex items-center gap-2 px-2.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-[11px] text-indigo-700 font-bold transition-all hover:bg-indigo-100";
+
+        chip.innerHTML = `
+          <span class="truncate max-w-[180px]" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <button type="button" class="text-indigo-400 hover:text-rose-600 transition-colors cursor-pointer" title="Remove file" onclick="removeFile(${index})">✕</button>
+        `;
+        fileList.appendChild(chip);
+      });
+    }
+
+    // Validation alerts
+    function showValidationAlert(message) {
+      validationAlertText.textContent = message;
+      validationAlert.classList.remove("hidden");
+    }
+
+    function hideValidationAlert() {
+      validationAlert.classList.add("hidden");
+    }
+
+    // Review Panel View Switchers
+    function showEmptyState() {
+      emptyState.classList.remove("hidden");
+      loadingState.classList.add("hidden");
+      errorState.classList.add("hidden");
+      resultsView.classList.add("hidden");
+    }
+
+    function showLoadingState() {
+      emptyState.classList.add("hidden");
+      loadingState.classList.remove("hidden");
+      errorState.classList.add("hidden");
+      resultsView.classList.add("hidden");
+      setButtonLoading(true);
+    }
+
+    function showErrorState(message) {
+      emptyState.classList.add("hidden");
+      loadingState.classList.add("hidden");
+      errorState.classList.remove("hidden");
+      resultsView.classList.add("hidden");
+      errorMessage.textContent = message;
+      setButtonLoading(false);
+    }
+
+    function showResultsState() {
+      emptyState.classList.add("hidden");
+      loadingState.classList.add("hidden");
+      errorState.classList.add("hidden");
+      resultsView.classList.remove("hidden");
+      setButtonLoading(false);
+    }
+
+    function setButtonLoading(loading) {
+      isVerifying = loading;
+      verifyBtn.disabled = loading;
+      if (loading) {
+        verifyBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Analyzing Claims...</span>
+        `;
+      } else {
+        verifyBtn.innerHTML = `
+          <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Verify Claims</span>
+        `;
+      }
+    }
+
+    // =========================================================================
+    // 3. VERIFICATION EXECUTION WITH DYNAMIC ENDPOINT
+    // =========================================================================
+    async function verifyClaims() {
+      const draft = draftTextarea.value.trim();
+
+      if (!draft) {
+        showValidationAlert("Please enter or paste the AI Draft Answer to verify.");
+        draftTextarea.focus();
+        return;
+      }
+
+      if (uploadedFiles.length === 0) {
+        showValidationAlert("Please upload at least one PDF or TXT source document.");
+        return;
+      }
+
+      hideValidationAlert();
+      showLoadingState();
+      viewingFromHistory = false;
+      viewingHistoryBanner.classList.add("hidden");
+
+      const formData = new FormData();
+      formData.append("draft", draft);
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        formData.append("files", uploadedFiles[i]);
+      }
+
+      const API_URL = getApiUrl();
+      refreshEndpointDisplays();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP_${response.status}`);
+        }
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          showErrorState("The verification server returned an invalid response.");
+          return;
+        }
+
+        // Render result and save to history
+        renderVerificationResult(data, false);
+      } catch (err) {
+        console.error("Verification fetch error:", err);
+        if (err.message && err.message.startsWith("HTTP_")) {
+          showErrorState("Verification failed. Please try again.");
+        } else {
+          showErrorState(`Unable to connect to the VeriClaim verification server at ${API_URL}`);
+        }
+      }
+    }
+
+    verifyBtn.addEventListener("click", verifyClaims);
+    retryBtn.addEventListener("click", verifyClaims);
+
+    // =========================================================================
+    // 4. RENDER VERIFICATION RESULT & HISTORY STORAGE
+    // =========================================================================
+    function renderVerificationResult(data, isFromHistory = false) {
+      currentResponseData = data;
+      showResultsState();
+
+      // Timestamp matching theme format
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      reviewTimestamp.textContent = `${dateStr} • ${timeStr}`;
+
+      // Overall verdict styling
+      const verdict = (data.verdict || "REVIEW_REQUIRED").toUpperCase();
+      let badgeClasses = "";
+      let subtitleText = "";
+
+      if (verdict === "VERIFIED" || verdict === "SUPPORTED") {
+        badgeClasses = "bg-emerald-100 text-emerald-700";
+        subtitleText = "All statements backed by source evidence.";
+      } else if (verdict === "REVIEW_REQUIRED") {
+        badgeClasses = "bg-amber-100 text-amber-700";
+        subtitleText = "Statements flagged for compliance review.";
+      } else {
+        badgeClasses = "bg-rose-100 text-rose-700";
+        subtitleText = "Substantial discrepancy against source evidence.";
+      }
+
+      verdictBadge.className = `px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badgeClasses}`;
+      verdictBadge.textContent = verdict.replace(/_/g, " ");
+      verdictSubtitle.textContent = subtitleText;
+
+      // Cert ID in uppercase bold theme
+      const certId = (data.cert_id || "VC_" + Math.random().toString(36).substring(2, 8)).toUpperCase();
+      certIdDisplay.textContent = `CERT_ID: ${certId}`;
+
+      // Statistics calculations
+      const claims = Array.isArray(data.claims) ? data.claims : [];
+      const totalClaims = claims.length;
+      let supportedCount = 0;
+      let reviewCount = 0;
+      let divergentCount = 0;
+
+      claims.forEach(c => {
+        const v = (c.verdict || "").toUpperCase();
+        if (v === "SUPPORTED") {
+          supportedCount++;
+        } else if (v === "DIVERGENT" || v === "FAILED" || v === "UNSUPPORTED") {
+          divergentCount++;
+          reviewCount++;
+        } else {
+          reviewCount++;
+        }
+      });
+
+      statTotalClaims.textContent = totalClaims < 10 ? `0${totalClaims}` : totalClaims;
+      statSupportedClaims.textContent = supportedCount < 10 ? `0${supportedCount}` : supportedCount;
+      statReviewClaims.textContent = reviewCount < 10 ? `0${reviewCount}` : reviewCount;
+
+      const ratePct = totalClaims > 0 ? Math.round((supportedCount / totalClaims) * 100) : 0;
+      evidenceMatchRate.textContent = `${ratePct}% Alignment Rate`;
+
+      // Render Individual Claim Cards with Bold Typography styling
+      claimsList.innerHTML = "";
+
+      if (claims.length === 0) {
+        claimsList.innerHTML = `<p class="text-sm text-slate-500 italic p-4 text-center">No individual claim breakdown provided in verification response.</p>`;
+      } else {
+        claims.forEach((claim, idx) => {
+          const claimNum = idx + 1;
+          const claimVerdict = (claim.verdict || "REVIEW_REQUIRED").toUpperCase();
+          const isSupported = claimVerdict === "SUPPORTED";
+          const isDivergent = claimVerdict === "DIVERGENT" || claimVerdict === "FAILED" || claimVerdict === "UNSUPPORTED";
+
+          const card = document.createElement("div");
+
+          let borderLeftClass = "border-amber-500";
+          let statusTextColor = "text-amber-500";
+          let matchTextColor = "text-amber-600";
+          let progressBarColor = "bg-amber-500";
+
+          if (isSupported) {
+            borderLeftClass = "border-emerald-500";
+            statusTextColor = "text-emerald-500";
+            matchTextColor = "text-emerald-600";
+            progressBarColor = "bg-emerald-500";
+          } else if (isDivergent) {
+            borderLeftClass = "border-rose-500";
+            statusTextColor = "text-rose-500";
+            matchTextColor = "text-rose-600";
+            progressBarColor = "bg-rose-500";
+          }
+
+          card.className = `p-4 bg-white border-l-4 ${borderLeftClass} rounded-r-2xl border-y border-r border-slate-200/80 shadow-sm transition-all duration-150 space-y-3`;
+
+          const evidenceList = Array.isArray(claim.evidence) ? claim.evidence : [];
+          let topMatchPct = 0;
+          if (evidenceList.length > 0) {
+            const m = evidenceList[0].match;
+            topMatchPct = typeof m === "number" ? Math.round(m > 1 ? m : m * 100) : 95;
+          } else {
+            topMatchPct = isSupported ? 95 : 45;
+          }
+
+          let evidenceHtml = "";
+          if (evidenceList.length > 0) {
+            evidenceHtml = `
+              <div class="space-y-2 pt-1">
+                ${evidenceList.map(ev => {
+                  const matchVal = typeof ev.match === "number" ? ev.match : 0;
+                  const pct = Math.min(100, Math.max(0, Math.round(matchVal > 1 ? matchVal : matchVal * 100)));
+
+                  let spanText = "";
+                  if (Array.isArray(ev.span) && ev.span.length >= 2) {
+                    spanText = `Spans ${ev.span[0]}–${ev.span[1]}`;
+                  } else if (ev.span) {
+                    spanText = `Span: ${escapeHtml(String(ev.span))}`;
+                  } else {
+                    spanText = "Full doc";
+                  }
+
+                  return `
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <div class="flex items-center justify-between mb-1.5">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate max-w-[260px]" title="${escapeHtml(ev.src || "Source")}">
+                          Evidence: ${escapeHtml(ev.src || "Source Document")}
+                        </p>
+                        <p class="text-[10px] text-slate-400 font-mono">${spanText}</p>
+                      </div>
+                        ${ev.span_text ? `<p class="text-[11px] text-slate-700 leading-snug italic mb-2 border-l-2 border-slate-300 pl-2">"${escapeHtml(ev.span_text)}"</p>` : ""}
+                      <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full ${progressBarColor}" style="width: ${pct}%"></div>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `;
+          } else {
+            evidenceHtml = `
+              <div class="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                <p class="text-[11px] text-amber-800 italic leading-snug underline decoration-amber-200 underline-offset-4 font-medium">
+                  Warning: No direct supporting evidence found in uploaded documents. Discrepancy flagged for human review.
+                </p>
+              </div>
+            `;
+          }
+
+          card.innerHTML = `
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-[10px] font-black ${statusTextColor} uppercase tracking-widest">
+                Claim #${claimNum} • ${claimVerdict.replace(/_/g, " ")}
+              </span>
+              <span class="text-xs font-bold ${matchTextColor} font-mono">${topMatchPct}% Match</span>
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed font-medium mb-2">
+              "${escapeHtml(claim.text || "")}"
+            </p>
+            ${evidenceHtml}
+          `;
+
+          claimsList.appendChild(card);
+        });
+      }
+
+      // Automatic persistence to localStorage history (only when not viewing from existing history)
+      if (!isFromHistory) {
+        saveVerificationToHistory({
+          cert_id: certId,
+          verdict: verdict,
+          timestamp: new Date().toISOString(),
+          formatted_date: `${dateStr} • ${timeStr}`,
+          total_claims: totalClaims,
+          "total claims": totalClaims,
+          supported_claims: supportedCount,
+          "supported claims": supportedCount,
+          review_required_claims: reviewCount,
+          "review-required claims": reviewCount,
+          review_claims: reviewCount,
+          divergent_claims: divergentCount,
+          raw_json_response: data,
+          "complete raw JSON response": data,
+          raw_data: data
+        });
+      }
+    }
+
+    // Save item to localStorage history
+    function saveVerificationToHistory(entry) {
+      try {
+        let history = getStoredHistory();
+        // Prepend new entry
+        history.unshift(entry);
+        // Cap at 50 to maintain performance
+        if (history.length > 50) history = history.slice(0, 50);
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
+      } catch (err) {
+        console.warn("Unable to save verification history to localStorage:", err);
+      }
+    }
+
+    function getStoredHistory() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        console.error("Error reading localStorage history:", e);
+        return [];
+      }
+    }
+
+    // =========================================================================
+    // 5. HISTORY PAGE LOGIC & RENDERING
+    // =========================================================================
+    const historyListContainer = document.getElementById("historyListContainer");
+    const historyEmptyState = document.getElementById("historyEmptyState");
+    const historyRecordCountBadge = document.getElementById("historyRecordCountBadge");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const historyNewVerificationBtn = document.getElementById("historyNewVerificationBtn");
+    const historyGoDashboardBtn = document.getElementById("historyGoDashboardBtn");
+
+    function renderHistoryPage() {
+      const history = getStoredHistory();
+      historyRecordCountBadge.textContent = `${history.length} ${history.length === 1 ? 'Record' : 'Records'}`;
+
+      if (history.length === 0) {
+        historyListContainer.innerHTML = "";
+        historyEmptyState.classList.remove("hidden");
+        return;
+      }
+
+      historyEmptyState.classList.add("hidden");
+      historyListContainer.innerHTML = "";
+
+      history.forEach((record, index) => {
+        const card = document.createElement("div");
+        card.className = "bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:border-indigo-300 transition-all space-y-4";
+
+        const verdict = (record.verdict || "REVIEW_REQUIRED").toUpperCase();
+        let badgeClass = "bg-amber-100 text-amber-700";
+        if (verdict === "VERIFIED" || verdict === "SUPPORTED") badgeClass = "bg-emerald-100 text-emerald-700";
+        else if (verdict === "DIVERGENT" || verdict === "FAILED") badgeClass = "bg-rose-100 text-rose-700";
+
+        card.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badgeClass}">
+                Overall Verdict: ${verdict.replace(/_/g, " ")}
+              </span>
+              <span class="font-mono text-xs font-bold text-slate-800 tracking-tight">Certificate ID: ${escapeHtml(record.cert_id)}</span>
+            </div>
+            <div class="text-xs text-slate-500 font-mono">
+              Date and Time: ${escapeHtml(record.formatted_date || record.timestamp || "")}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <p class="text-[9px] font-bold uppercase text-slate-400">Total Claims</p>
+              <p class="text-lg font-black text-slate-800">${record.total_claims || 0}</p>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <p class="text-[9px] font-bold uppercase text-emerald-600">Supported Claims</p>
+              <p class="text-lg font-black text-emerald-600">${record.supported_claims || 0}</p>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <p class="text-[9px] font-bold uppercase text-amber-600">Review Required</p>
+              <p class="text-lg font-black text-amber-600">${record.review_claims || record.review_required_claims || 0}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end pt-1">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-slate-900 hover:bg-black transition-colors cursor-pointer shadow-sm"
+              onclick="viewHistoryDetail(${index})"
+            >
+              <span>VIEW DETAILS</span>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        `;
+
+        historyListContainer.appendChild(card);
+      });
+    }
+
+    // View specific historic item in the dashboard UI
+    window.viewHistoryDetail = function(index) {
+      const history = getStoredHistory();
+      const record = history[index];
+      if (!record || !record.raw_data) return;
+
+      viewingFromHistory = true;
+      historyBannerText.textContent = `Viewing audit record CERT_ID: ${record.cert_id} (${record.formatted_date || ""})`;
+      viewingHistoryBanner.classList.remove("hidden");
+
+      renderVerificationResult(record.raw_data, true);
+      showPage("dashboard");
+    };
+
+    // Back to history from dashboard
+    backToHistoryFromDashboardBtn.addEventListener("click", () => {
+      showPage("history");
+    });
+
+    // Clear history action with confirmation
+    clearHistoryBtn.addEventListener("click", () => {
+      const history = getStoredHistory();
+      if (history.length === 0) return;
+
+      if (window.confirm("Are you sure you want to delete all verification history records? This cannot be undone.")) {
+        localStorage.removeItem(STORAGE_KEY_HISTORY);
+        renderHistoryPage();
+      }
+    });
+
+    historyNewVerificationBtn.addEventListener("click", () => {
+      viewingFromHistory = false;
+      viewingHistoryBanner.classList.add("hidden");
+      showPage("dashboard");
+    });
+
+    historyGoDashboardBtn.addEventListener("click", () => {
+      viewingFromHistory = false;
+      viewingHistoryBanner.classList.add("hidden");
+      showPage("dashboard");
+    });
+
+    // =========================================================================
+    // 6. SETTINGS PAGE LOGIC & ACTIONS
+    // =========================================================================
+    const settingsApiInput = document.getElementById("settingsApiInput");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const resetSettingsBtn = document.getElementById("resetSettingsBtn");
+    const settingsSuccessAlert = document.getElementById("settingsSuccessAlert");
+    const settingsSuccessText = document.getElementById("settingsSuccessText");
+
+    function initSettingsPage() {
+      settingsApiInput.value = getApiUrl();
+      settingsSuccessAlert.classList.add("hidden");
+    }
+
+    saveSettingsBtn.addEventListener("click", () => {
+      let val = settingsApiInput.value.trim();
+      if (!val) {
+        val = DEFAULT_API_URL;
+      }
+      localStorage.setItem(STORAGE_KEY_API_URL, val);
+      refreshEndpointDisplays();
+
+      settingsSuccessText.textContent = `Target API endpoint saved: ${val}`;
+      settingsSuccessAlert.classList.remove("hidden");
+
+      setTimeout(() => {
+        settingsSuccessAlert.classList.add("hidden");
+      }, 4000);
+    });
+
+    resetSettingsBtn.addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY_API_URL);
+      settingsApiInput.value = DEFAULT_API_URL;
+      refreshEndpointDisplays();
+
+      settingsSuccessText.textContent = `API endpoint reset to default: ${DEFAULT_API_URL}`;
+      settingsSuccessAlert.classList.remove("hidden");
+
+      setTimeout(() => {
+        settingsSuccessAlert.classList.add("hidden");
+      }, 4000);
+    });
+
+    // =========================================================================
+    // 7. ADMIN PAGE LOGIC & DYNAMIC AGGREGATION
+    // =========================================================================
+    const adminStatTotalVerifications = document.getElementById("adminStatTotalVerifications");
+    const adminStatTotalClaims = document.getElementById("adminStatTotalClaims");
+    const adminStatSupportedClaims = document.getElementById("adminStatSupportedClaims");
+    const adminStatReviewClaims = document.getElementById("adminStatReviewClaims");
+    const adminStatDivergentClaims = document.getElementById("adminStatDivergentClaims");
+    const adminActivityContainer = document.getElementById("adminActivityContainer");
+
+    function renderAdminPage() {
+      const history = getStoredHistory();
+
+      let totalVerifications = history.length;
+      let totalClaims = 0;
+      let supportedClaims = 0;
+      let reviewClaims = 0;
+      let divergentClaims = 0;
+
+      history.forEach(item => {
+        totalClaims += (item.total_claims || 0);
+        supportedClaims += (item.supported_claims || 0);
+        reviewClaims += (item.review_claims || 0);
+        divergentClaims += (item.divergent_claims || 0);
+      });
+
+      adminStatTotalVerifications.textContent = totalVerifications < 10 ? `0${totalVerifications}` : totalVerifications;
+      adminStatTotalClaims.textContent = totalClaims < 10 ? `0${totalClaims}` : totalClaims;
+      adminStatSupportedClaims.textContent = supportedClaims < 10 ? `0${supportedClaims}` : supportedClaims;
+      adminStatReviewClaims.textContent = reviewClaims < 10 ? `0${reviewClaims}` : reviewClaims;
+      adminStatDivergentClaims.textContent = divergentClaims < 10 ? `0${divergentClaims}` : divergentClaims;
+
+      // Render Recent Verification Activity
+      if (history.length === 0) {
+        adminActivityContainer.innerHTML = `
+          <div class="py-10 text-center space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-400">No verification activity logged yet</p>
+            <p class="text-xs text-slate-500">Verifications conducted in this session will appear in this administrative log.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let rowsHtml = history.slice(0, 10).map((record, idx) => {
+        const verdict = (record.verdict || "REVIEW_REQUIRED").toUpperCase();
+        let badgeClass = "bg-amber-100 text-amber-700";
+        if (verdict === "VERIFIED" || verdict === "SUPPORTED") badgeClass = "bg-emerald-100 text-emerald-700";
+        else if (verdict === "DIVERGENT" || verdict === "FAILED") badgeClass = "bg-rose-100 text-rose-700";
+
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+            <td class="py-3 px-3 font-mono text-xs font-bold text-slate-800">${escapeHtml(record.cert_id)}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${badgeClass}">
+                ${verdict.replace(/_/g, " ")}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-xs text-slate-500 font-mono">${escapeHtml(record.formatted_date || record.timestamp || "")}</td>
+            <td class="py-3 px-3 text-xs font-bold text-slate-700">${record.total_claims || 0}</td>
+            <td class="py-3 px-3 text-xs font-bold text-emerald-600">${record.supported_claims || 0}</td>
+            <td class="py-3 px-3 text-xs font-bold text-amber-600">${record.review_claims || 0}</td>
+            <td class="py-3 px-3 text-right">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                onclick="viewHistoryDetail(${idx})"
+              >
+                Inspect
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      adminActivityContainer.innerHTML = `
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              <th class="py-2.5 px-3">Certificate ID</th>
+              <th class="py-2.5 px-3">Verdict</th>
+              <th class="py-2.5 px-3">Timestamp</th>
+              <th class="py-2.5 px-3">Claims</th>
+              <th class="py-2.5 px-3">Supported</th>
+              <th class="py-2.5 px-3">Review Req.</th>
+              <th class="py-2.5 px-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // =========================================================================
+    // 8. DOWNLOAD CERTIFICATE & COPY CERT ID
+    // =========================================================================
+    downloadCertBtn.addEventListener("click", () => {
+      if (!currentResponseData) return;
+
+      const blob = new Blob(
+        [JSON.stringify(currentResponseData, null, 2)],
+        { type: "application/json" }
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `vericlaim_certificate_${(currentResponseData.cert_id || "export").toLowerCase()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+
+    copyCertBtn.addEventListener("click", () => {
+      const text = certIdDisplay.textContent.replace("CERT_ID: ", "").trim();
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = copyCertBtn.innerHTML;
+        copyCertBtn.innerHTML = `<svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+        setTimeout(() => { copyCertBtn.innerHTML = orig; }, 1500);
+      });
+    });
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // =========================================================================
+    // 9. DEMO DATA & SAMPLE CASE LOADER
+    // =========================================================================
+    const sampleMockResponse = {
+      "cert_id": "VC_9F2A41_2023",
+      "verdict": "REVIEW_REQUIRED",
+      "claims": [
+        {
+          "text": "The company reported a fiscal revenue of $4.2 billion for the third quarter of 2023.",
+          "verdict": "SUPPORTED",
+          "evidence": [
+            {
+              "src": "Q3_Earnings_Report.pdf",
+              "span": [102, 145],
+              "match": 0.98
+            }
+          ]
+        },
+        {
+          "text": "This performance indicates a 22% year-over-year growth, primarily driven by enterprise SaaS.",
+          "verdict": "DIVERGENT",
+          "evidence": []
+        },
+        {
+          "text": "New market entries in the APAC region drove expansion across enterprise segments.",
+          "verdict": "SUPPORTED",
+          "evidence": [
+            {
+              "src": "APAC_Market_Analysis.txt",
+              "span": [210, 290],
+              "match": 0.89
+            }
+          ]
+        }
+      ]
+    };
+
+    function loadSampleData() {
+      // Return to dashboard first if on another page
+      showPage("dashboard");
+      viewingFromHistory = false;
+      viewingHistoryBanner.classList.add("hidden");
+
+      draftTextarea.value = "The company reported a fiscal revenue of $4.2 billion for the third quarter of 2023. This performance indicates a 22% year-over-year growth, primarily driven by the expansion of the SaaS enterprise division and new market entries in the APAC region.";
+      updateTextStats();
+
+      const samplePdf = new File(["%PDF-1.4 Mock Q3 Earnings Report containing revenue and compliance figures."], "Q3_Earnings_Report.pdf", { type: "application/pdf" });
+      const sampleTxt = new File(["APAC regional market analysis and SaaS performance metrics."], "APAC_Market_Analysis.txt", { type: "text/plain" });
+
+      uploadedFiles = [samplePdf, sampleTxt];
+      renderFileList();
+      hideValidationAlert();
+    }
+
+    loadSampleBtn.addEventListener("click", () => {
+      loadSampleData();
+    });
+
+    viewSampleDataBtn.addEventListener("click", () => {
+      renderVerificationResult(sampleMockResponse, false);
+    });
+
+    // Expose removeFile globally for inline onclick
+    window.removeFile = removeFile;
+
+    // Initialization on DOM load
+    refreshEndpointDisplays();
+    updateTextStats();
+  </script>
+</body>
+</html>
