@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+import hashlib
 from typing import Annotated
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -136,7 +137,14 @@ client = OpenAI(
 )
 
 GROQ_MODEL = "openai/gpt-oss-20b"
-
+PROMPT_VERSION = "v1.1"
+TRUST_WEIGHTS = {
+    "statutory": 1.00,
+    "policy": 0.97,
+    "internal": 0.94,
+    "web": 0.90
+}
+DEFAULT_TRUST = "internal"
 
 # ============================================================
 # EXTRACT TEXT FROM PDF / TXT
@@ -268,7 +276,8 @@ async def health():
 @app.post("/verify")
 async def verify_claim(
     draft: Annotated[str, Form(...)],
-    files: Annotated[list[UploadFile], File(...)]
+    files: Annotated[list[UploadFile], File(...)],
+    trust: Annotated[str, Form()] = ""
 ):
 
     try:
@@ -298,6 +307,13 @@ async def verify_claim(
 
         all_sentences = []
         source_documents = {}
+        source_trust = {}
+
+        trust_list = [
+            t.strip().lower()
+            for t in trust.split(",")
+            if t.strip()
+        ]
 
         for uploaded_file in files:
 
@@ -318,6 +334,17 @@ async def verify_claim(
                 continue
             text = re.sub(r'\s+', ' ', text).strip()
             source_documents[filename] = text
+
+            tier = (
+                trust_list[len(source_trust)]
+                if len(source_trust) < len(trust_list)
+                else DEFAULT_TRUST
+            )
+
+            if tier not in TRUST_WEIGHTS:
+                tier = DEFAULT_TRUST
+
+            source_trust[filename] = tier
 
             sentences = split_into_sentences(text)
 
@@ -399,29 +426,32 @@ async def verify_claim(
 
 
             # Top 3 candidates
-            top_k = min(
-                3,
-                len(all_sentences)
-            )
+            # Apply source authority weighting to ranking only
+            weighted_scores = similarity_scores.clone()
 
-            top_results = similarity_scores.topk(
-                k=top_k
-            )
+            for i, item in enumerate(all_sentences):
+                weighted_scores[i] *= TRUST_WEIGHTS[
+                    source_trust.get(item["src"], DEFAULT_TRUST)
+                ]
 
+            top_k = min(3, len(all_sentences))
+
+            top_results = weighted_scores.topk(k=top_k)
 
             candidates = []
 
-            for score, index in zip(
-                top_results.values,
-                top_results.indices
-            ):
+            for index in top_results.indices:
 
                 index = int(index)
 
                 candidates.append({
                     "src": all_sentences[index]["src"],
                     "text": all_sentences[index]["text"],
-                    "score": float(score)
+                    "score": float(similarity_scores[index]),
+                    "trust": source_trust.get(
+                        all_sentences[index]["src"],
+                        DEFAULT_TRUST
+                    )
                 })
 
 
@@ -439,7 +469,10 @@ async def verify_claim(
 
             evidence_context = "\n\n".join(
                 [
-                    f"SOURCE {i + 1}:\n{candidate['text']}"
+                    f"SOURCE {i + 1} "
+                    f"(document: {candidate['src']}, "
+                    f"authority: {candidate['trust']}):\n"
+                    f"{candidate['text']}"
                     for i, candidate in enumerate(candidates)
                 ]
             )
@@ -475,20 +508,18 @@ UNVERIFIED:
 The source evidence does not provide enough information
 to determine whether the claim is true.
 
+Some sources carry more authority than others.
+Authority ranking, highest first: statutory, policy, internal, web.
+If sources disagree, base your verdict on the highest-authority source.
+
 Return ONLY this format:
 
-VERDICT: SUPPORTED
+VERDICT: SUPPORTED or DIVERGENT or UNVERIFIED
 REASON: short explanation
+CONFLICT: YES or NO
 
-OR
-
-VERDICT: DIVERGENT
-REASON: short explanation
-
-OR
-
-VERDICT: UNVERIFIED
-REASON: short explanation
+Set CONFLICT to YES only when two or more sources give
+materially different answers about this specific claim.
 """
 
 
@@ -545,7 +576,23 @@ REASON: short explanation
                 llm_output,
                 re.IGNORECASE
             )
+            conflict_match = re.search(
+                r"CONFLICT\s*:\s*(YES|NO)",
+                llm_output,
+                re.IGNORECASE
+            )
 
+            has_conflict = bool(
+                conflict_match
+                and conflict_match.group(1).upper() == "YES"
+                and len({c["src"] for c in candidates}) > 1
+            )
+
+            conflicting_sources = (
+                sorted({c["src"] for c in candidates})
+                if has_conflict
+                else []
+            )
 
             if verdict_match:
 
@@ -592,6 +639,9 @@ REASON: short explanation
                 "verdict": claim_verdict,
 
                 "reason": reason,
+                "conflict": has_conflict,
+
+                "conflicting_sources": conflicting_sources,
 
                 "evidence": [
 
@@ -623,7 +673,11 @@ REASON: short explanation
         ]
 
 
-        if "DIVERGENT" in verdicts:
+        if any(c["conflict"] for c in verified_claims):
+
+            overall_verdict = "REVIEW_REQUIRED"
+
+        elif "DIVERGENT" in verdicts:
 
             overall_verdict = "REVIEW_REQUIRED"
 
@@ -640,7 +694,16 @@ REASON: short explanation
         # CERTIFICATE ID
         # ----------------------------------------------------
 
-        cert_id = "vc_" + uuid.uuid4().hex[:8]
+        fingerprint = "|".join([
+            draft.strip(),
+            "|".join(f"{name}:{text}" for name, text in sorted(source_documents.items())),
+            GROQ_MODEL,
+            PROMPT_VERSION
+        ])
+
+        cert_id = "vc_" + hashlib.sha256(
+            fingerprint.encode("utf-8")
+        ).hexdigest()[:12]
 
 
         # ----------------------------------------------------
@@ -650,6 +713,12 @@ REASON: short explanation
         return {
             "cert_id": cert_id,
             "verdict": overall_verdict,
+            "audit": {
+                "model": GROQ_MODEL,
+                "embedding_model": "BAAI/bge-small-en-v1.5",
+                "prompt_version": PROMPT_VERSION,
+                "sources": sorted(source_documents.keys())
+            },
             "claims": verified_claims
         }
 

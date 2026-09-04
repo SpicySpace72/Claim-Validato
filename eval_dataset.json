@@ -1,0 +1,28 @@
+{
+  "dataset_name": "VeriClaim HR Policy Benchmark v1",
+  "source_document": "Sample.pdf",
+  "origin": "Self-authored synthetic HR policy document. Created by the team for this project. No third-party licensing applies.",
+  "labelling": "Claims hand-written and labelled by the team against the source document. Each claim targets exactly one policy clause.",
+  "claims": [
+    { "id": 1,  "text": "Employees must submit their leave requests at least 3 working days before the requested leave date.", "expected": "SUPPORTED" },
+    { "id": 2,  "text": "Full-time employees are entitled to 20 days of paid annual leave per calendar year.", "expected": "SUPPORTED" },
+    { "id": 3,  "text": "Employees may work remotely for up to 2 days per week with prior manager approval.", "expected": "SUPPORTED" },
+    { "id": 4,  "text": "Employees are expected to maintain a minimum attendance rate of 90% per month.", "expected": "SUPPORTED" },
+    { "id": 5,  "text": "A medical certificate is required after more than 2 consecutive working days of illness.", "expected": "SUPPORTED" },
+    { "id": 6,  "text": "Unused annual leave may be carried forward to the following year subject to company approval.", "expected": "SUPPORTED" },
+    { "id": 7,  "text": "Overtime must be approved by a manager before the additional work is performed.", "expected": "SUPPORTED" },
+    { "id": 8,  "text": "Emergency leave may be submitted on the same day in unforeseen circumstances.", "expected": "SUPPORTED" },
+
+    { "id": 9,  "text": "Leave requests must be submitted at least 7 working days in advance.", "expected": "DIVERGENT" },
+    { "id": 10, "text": "Full-time employees receive 30 days of paid annual leave each calendar year.", "expected": "DIVERGENT" },
+    { "id": 11, "text": "Employees may work remotely for up to 4 days per week with manager approval.", "expected": "DIVERGENT" },
+    { "id": 12, "text": "The minimum attendance rate required is 75% per month.", "expected": "DIVERGENT" },
+    { "id": 13, "text": "Overtime eligibility begins after 35 hours of work in a week.", "expected": "DIVERGENT" },
+    { "id": 14, "text": "Unused annual leave is forfeited at the end of the calendar year.", "expected": "DIVERGENT" },
+
+    { "id": 15, "text": "The company provides a fully subsidised health insurance plan for all employees.", "expected": "UNVERIFIED" },
+    { "id": 16, "text": "Employees receive an annual performance bonus every December.", "expected": "UNVERIFIED" },
+    { "id": 17, "text": "Parental leave is granted for a period of 12 weeks.", "expected": "UNVERIFIED" },
+    { "id": 18, "text": "The company matches retirement savings contributions up to 5 percent of salary.", "expected": "UNVERIFIED" }
+  ]
+}

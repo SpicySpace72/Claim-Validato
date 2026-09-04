@@ -593,6 +593,7 @@ app.add_middleware(
 
     // Application state
     let uploadedFiles = [];
+    let fileTrust = [];
     let currentResponseData = null;
     let isVerifying = false;
     let viewingFromHistory = false;
@@ -808,6 +809,7 @@ app.add_middleware(
           const exists = uploadedFiles.some(f => f.name === file.name && f.size === file.size);
           if (!exists) {
             uploadedFiles.push(file);
+            fileTrust.push("internal");
             addedCount++;
           }
         }
@@ -821,6 +823,7 @@ app.add_middleware(
 
     function removeFile(index) {
       uploadedFiles.splice(index, 1);
+      fileTrust.splice(index, 1);
       renderFileList();
     }
 
@@ -840,8 +843,17 @@ app.add_middleware(
         const chip = document.createElement("div");
         chip.className = "flex items-center gap-2 px-2.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-[11px] text-indigo-700 font-bold transition-all hover:bg-indigo-100";
 
+        const tiers = ["statutory", "policy", "internal", "web"];
+
+        const tierOptions = tiers.map(t =>
+          `<option value="${t}"${fileTrust[index] === t ? " selected" : ""}>${t}</option>`
+        ).join("");
+
         chip.innerHTML = `
           <span class="truncate max-w-[180px]" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+          <select class="bg-white border border-indigo-200 rounded px-1 py-0.5 text-[10px] text-indigo-600 font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400" title="Source authority level" onchange="setTrust(${index}, this.value)">
+            ${tierOptions}
+          </select>
           <button type="button" class="text-indigo-400 hover:text-rose-600 transition-colors cursor-pointer" title="Remove file" onclick="removeFile(${index})">✕</button>
         `;
         fileList.appendChild(chip);
@@ -939,6 +951,7 @@ app.add_middleware(
       for (let i = 0; i < uploadedFiles.length; i++) {
         formData.append("files", uploadedFiles[i]);
       }
+      formData.append("trust", fileTrust.join(","));
 
       const API_URL = getApiUrl();
       refreshEndpointDisplays();
@@ -1536,6 +1549,7 @@ app.add_middleware(
       const sampleTxt = new File(["APAC regional market analysis and SaaS performance metrics."], "APAC_Market_Analysis.txt", { type: "text/plain" });
 
       uploadedFiles = [samplePdf, sampleTxt];
+      fileTrust = ["policy", "internal"];
       renderFileList();
       hideValidationAlert();
     }
@@ -1549,7 +1563,13 @@ app.add_middleware(
     });
 
     // Expose removeFile globally for inline onclick
+    // Expose handlers globally for inline onclick
     window.removeFile = removeFile;
+
+    function setTrust(index, value) {
+      fileTrust[index] = value;
+    }
+    window.setTrust = setTrust;
 
     // Initialization on DOM load
     refreshEndpointDisplays();
